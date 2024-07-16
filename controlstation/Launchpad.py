@@ -46,8 +46,8 @@ class MouseControlApp:
         if self.mouse_down:
             off_x, off_y = self.mouse_x - self.WIDTH / 2, self.mouse_y - self.HEIGHT / 2
             off_x_scaled, off_y_scaled = off_x / 20, off_y / 10
-            self.x = max(-25, min(off_x_scaled, 25)) + self.center_x
-            self.y = max(-25, min(off_y_scaled, 25)) + self.center_y
+            self.x = max(-30, min(off_x_scaled, 30)) + self.center_x
+            self.y = max(-30, min(off_y_scaled, 30)) + self.center_y
 
             self.y = -self.y
             orden = f"G1 X{self.x} Y{self.y} F3600\r\n"
