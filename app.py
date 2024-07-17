@@ -11,6 +11,7 @@ import ctypes
 import tkinter as tk
 from tkinter import scrolledtext
 from PIL import Image, ImageTk
+import sys
 
 class App:
     def __init__(self, master):
@@ -70,9 +71,28 @@ class App:
         self.quit_button.pack(pady=5)
 
         # Right frame elements
-        self.canvas = tk.Label(self.right_frame)
+        # self.canvas = tk.Label(self.right_frame)
+        # self.canvas.pack(fill=tk.BOTH, expand=True)
+
+        self.WIDTH, self.HEIGHT = 1000, 500
+
+        # Create the canvas
+        self.canvas = tk.Canvas(self.right_frame, width=self.WIDTH, height=self.HEIGHT)
         self.canvas.pack(fill=tk.BOTH, expand=True)
 
+        # Initial values of x and y
+        self.x, self.y = 0, 0
+        self.center_x, self.center_y = 0, 0
+        self.mouse_x, self.mouse_y = self.WIDTH / 2, self.HEIGHT / 2
+        self.mouse_down = False
+
+        # Bind events
+        self.canvas.bind("<ButtonPress-1>", self.on_mouse_down)
+        self.canvas.bind("<ButtonRelease-1>", self.on_mouse_up)
+        self.canvas.bind("<Motion>", self.on_mouse_move)
+
+        # Start the drawing loop
+        self.draw()
         self.printer = Printer("/dev/ttyUSB0", 250000)
         self.edm = EDM("/dev/ttyUSB1", 19200)
 
@@ -110,6 +130,48 @@ class App:
     def create_move_button(self, frame, text, row, column, direction):
         button = tk.Button(frame, text=text, command=lambda: self.move(direction))
         button.grid(row=row, column=column, padx=5, pady=5)
+
+    def on_mouse_down(self, event):
+        self.mouse_x, self.mouse_y = event.x, event.y
+        self.mouse_down = True
+
+    def on_mouse_up(self, event):
+        if event.num == 1:  # Left mouse button release
+            self.center_x, self.center_y = self.x, -self.y
+            self.mouse_x, self.mouse_y = self.WIDTH / 2, self.HEIGHT / 2  # Reset to center
+            print("New center set to:", self.center_x, self.center_y)
+            self.mouse_down = False
+
+    def on_mouse_move(self, event):
+        if self.mouse_down:
+            self.mouse_x, self.mouse_y = event.x, event.y
+
+    def update_position(self):
+        if self.mouse_down:
+            off_x, off_y = self.mouse_x - self.WIDTH / 2, self.mouse_y - self.HEIGHT / 2
+            off_x_scaled, off_y_scaled = off_x / 20, off_y / 10
+            self.x = max(-30, min(off_x_scaled, 30)) + self.center_x
+            self.y = max(-30, min(off_y_scaled, 30)) + self.center_y
+
+            self.y = -self.y
+            orden = f"G1 X{self.x} Y{self.y} F3600\r\n"
+            print(orden)
+            # ser.write(str.encode(orden))
+
+    def draw(self):
+        self.canvas.delete("all")
+        
+        # Draw a crosshair in the middle of the screen
+        self.canvas.create_line(self.WIDTH // 2 - 20, self.HEIGHT // 2, self.WIDTH // 2 + 20, self.HEIGHT // 2, fill="red", width=2)
+        self.canvas.create_line(self.WIDTH // 2, self.HEIGHT // 2 - 20, self.WIDTH // 2, self.HEIGHT // 2 + 20, fill="red", width=2)
+        
+        # Draw a circle at the current (mouse_x, mouse_y) position
+        self.canvas.create_oval(self.mouse_x - 5, self.mouse_y - 5, self.mouse_x + 5, self.mouse_y + 5, fill="green")
+
+        # Update position if mouse is down
+        self.update_position()
+
+        self.master.after(20, self.draw)
 
     def initialize_devices(self):
         if self.printer.connect():
