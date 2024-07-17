@@ -25,9 +25,28 @@ class MouseControlApp:
         self.WIDTH, self.HEIGHT = 1024, 750
         
         self.ser = serial.Serial("/dev/ttyUSB0", 250000)
+
+        # Create main frame
+        self.main_frame = tk.Frame(self.root)
+        self.main_frame.pack(fill=tk.BOTH, expand=True)
+
         # Create the canvas
-        self.canvas = tk.Canvas(self.root, width=self.WIDTH, height=self.HEIGHT)
-        self.canvas.pack()
+        self.canvas = tk.Canvas(self.main_frame, width=self.WIDTH, height=self.HEIGHT)
+        self.canvas.pack(side=tk.RIGHT)
+
+        # Create sidebar
+        self.sidebar = tk.Frame(self.main_frame, width=200, bg="gray")
+        self.sidebar.pack(side=tk.LEFT, fill=tk.Y)
+
+        # Sidebar labels
+        self.position_label = tk.Label(self.sidebar, text="Position:", bg="gray", font=("Helvetica", 16))
+        self.position_label.pack(pady=10)
+
+        self.x_label = tk.Label(self.sidebar, text="X: 0", bg="gray", font=("Helvetica", 14))
+        self.x_label.pack(pady=5)
+
+        self.y_label = tk.Label(self.sidebar, text="Y: 0", bg="gray", font=("Helvetica", 14))
+        self.y_label.pack(pady=5)
 
         # Initial values of x and y
         self.x, self.y = 0, 0
@@ -40,17 +59,14 @@ class MouseControlApp:
         self.canvas.bind("<ButtonRelease-1>", self.on_mouse_up)
         self.canvas.bind("<Motion>", self.on_mouse_move)
 
-
         self.devices = self.create_devices_with_tries()
         self.device = system.select_device(self.devices)
         self.num_channels = self.setup(self.device)
         self.device.start_stream()
 
-        
-
         # Start the drawing loop
         self.draw()
-    
+
     def create_devices_with_tries(self):
         tries = 0
         tries_max = 6
@@ -68,7 +84,6 @@ class MouseControlApp:
                 return devices
         else:
             raise Exception(f'No device found! Please connect a device and run the example again.')
-
 
     def setup(self, device):
         nodemap = device.nodemap
@@ -115,6 +130,10 @@ class MouseControlApp:
             print(orden)
             self.ser.write(str.encode(orden))
 
+            # Update sidebar labels
+            self.x_label.config(text=f"X: {round(self.x,3)}")
+            self.y_label.config(text=f"Y: {round(self.y,3)}")
+
     def draw(self):
         self.canvas.delete("all")
         buffer = self.device.get_buffer()
@@ -128,7 +147,7 @@ class MouseControlApp:
         img = Image.fromarray(img)
         imgtk = ImageTk.PhotoImage(image=img)
 
-                            # Add the image to the canvas
+        # Add the image to the canvas
         self.canvas.create_image(0, 0, anchor=tk.NW, image=imgtk)
         self.canvas.image = imgtk
 
