@@ -25,7 +25,7 @@ class MouseControlApp:
         # Screen dimensions
         self.WIDTH, self.HEIGHT = 1024, 750
         
-        self.ser = serial.Serial("/dev/ttyUSB0", 250000)
+        self.ser = serial.Serial("/dev/ttyUSB1", 250000)
 
         # Create main frame
         self.main_frame = tk.Frame(self.root)
@@ -49,11 +49,22 @@ class MouseControlApp:
         self.x_label = tk.Label(self.sidebar, text="X: 0", bg="gray", font=("Helvetica", 14))
         self.x_label.pack(pady=3)
 
-        self.laser_detection_button = tk.Button(self.sidebar, text="Start Camera", command=self.start_camera)
-        self.laser_detection_button.pack(pady=5)
+        self.dis_label = tk.Label(self.sidebar, text="r:", bg="gray", font=("Helvetica", 14))
+        self.dis_label.pack(pady=3)
 
-        self.laser_detection_button = tk.Button(self.sidebar, text="Connect EDM", command=self.start_edm)
-        self.laser_detection_button.pack(pady=5)
+        self.start_camera_button = tk.Button(self.sidebar, text="Start Camera", command=self.start_camera)
+        self.start_camera_button.pack(pady=5)
+
+        self.start_edm_button = tk.Button(self.sidebar, text="Connect EDM", command=self.start_edm)
+        self.start_edm_button.pack(pady=5)
+
+        self.get_distance_button = tk.Button(self.sidebar, text="Get Distance", command=self.get_distance)
+        self.get_distance_button.pack(pady=5)
+
+        self.change_position = tk.Button(self.sidebar, text="Position: I", command=self.switch_position)
+        self.change_position.pack(pady=5)
+
+        self.position = True
 
         #self.laser_detection_button = tk.Button(self.sidebar, text="ATR: OFF", command=self.toggle_laser_detection)
         #self.laser_detection_button.pack(pady=5)
@@ -76,6 +87,7 @@ class MouseControlApp:
 
         # Start the drawing loop
         self.draw()
+
     def start_camera(self):
         if self.device is None:
             self.devices = self.create_devices_with_tries()
@@ -84,7 +96,7 @@ class MouseControlApp:
             self.device.start_stream()
 
     def start_edm(self):
-        self.edm = EDM("/dev/ttyUSB1", 19200)
+        self.edm = EDM("/dev/ttyUSB0", 19200)
         if self.edm.connect():
             print("Connected to the EDM.\n")
         else:
@@ -157,6 +169,29 @@ class MouseControlApp:
             self.y_label.config(text=f"V: {round(self.normalize(self.y+100),3)}")
             self.x_label.config(text=f"Hz: {round(self.normalize(self.x),3)}")
             
+    def get_distance(self):
+        self.distance = self.edm.capture_distance()
+        self.dis_label.config(text=f"r: {round(self.distance,3)}")
+
+    def switch_position(self):
+        self.position = not self.position
+        state = 1 if self.position else 2
+        self.change_position.config(text=f"Position: {state}")
+        print("Position state switched to {state}.\n")
+        if self.position is False:
+            self.x += 200
+            self.y = 200 - self.y
+            orden = f"G1 X{self.x} Y{self.y} F3600\r\n"
+            print(orden)
+            self.ser.write(str.encode(orden))
+        elif self.position is True:
+            self.x -= 200
+            self.y = -self.y + 200
+            orden = f"G1 X{self.x} Y{self.y} F3600\r\n"
+            print(orden)
+            self.ser.write(str.encode(orden))
+        self.y_label.config(text=f"V: {round(self.normalize(self.y+100),3)}")
+        self.x_label.config(text=f"Hz: {round(self.normalize(self.x),3)}")
 
     def draw(self):
         self.canvas.delete("all")
