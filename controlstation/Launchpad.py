@@ -11,7 +11,7 @@ import sys
 class MouseControlApp:
     def __init__(self, root):
         self.root = root
-        self.root.title("Mouse Control")
+        self.root.title("Launchpad")
 
         # Screen dimensions
         self.WIDTH, self.HEIGHT = 1000, 500
