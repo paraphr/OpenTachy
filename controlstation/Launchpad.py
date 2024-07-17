@@ -39,14 +39,14 @@ class MouseControlApp:
         self.sidebar.pack(side=tk.LEFT, fill=tk.Y)
 
         # Sidebar labels
-        self.position_label = tk.Label(self.sidebar, text="Position:", bg="gray", font=("Helvetica", 16))
+        self.position_label = tk.Label(self.sidebar, text="Position", bg="gray", font=("Helvetica", 16))
         self.position_label.pack(pady=10)
 
-        self.x_label = tk.Label(self.sidebar, text="X: 0", bg="gray", font=("Helvetica", 14))
-        self.x_label.pack(pady=5)
+        self.y_label = tk.Label(self.sidebar, text="V: 100", bg="gray", font=("Helvetica", 14))
+        self.y_label.pack(pady=3)
 
-        self.y_label = tk.Label(self.sidebar, text="Y: 0", bg="gray", font=("Helvetica", 14))
-        self.y_label.pack(pady=5)
+        self.x_label = tk.Label(self.sidebar, text="X: 0", bg="gray", font=("Helvetica", 14))
+        self.x_label.pack(pady=3)
 
         # Initial values of x and y
         self.x, self.y = 0, 0
@@ -131,8 +131,9 @@ class MouseControlApp:
             self.ser.write(str.encode(orden))
 
             # Update sidebar labels
-            self.x_label.config(text=f"X: {round(self.normalize(self.x),3)}")
-            self.y_label.config(text=f"Y: {round(self.normalize(self.y+100),3)}")
+            self.y_label.config(text=f"V: {round(self.normalize(self.y+100),3)}")
+            self.x_label.config(text=f"Hz: {round(self.normalize(self.x),3)}")
+            
 
     def draw(self):
         self.canvas.delete("all")
