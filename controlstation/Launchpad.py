@@ -15,6 +15,7 @@ import numpy as np
 import time
 import ctypes
 import serial
+from Devices import Printer, EDM
 
 class MouseControlApp:
     def __init__(self, root):
@@ -51,8 +52,13 @@ class MouseControlApp:
         self.laser_detection_button = tk.Button(self.sidebar, text="Start Camera", command=self.start_camera)
         self.laser_detection_button.pack(pady=5)
 
-        #self.laser_detection_button = tk.Button(self.sidebar, text="Marker Detection: OFF", command=self.toggle_laser_detection)
+        self.laser_detection_button = tk.Button(self.sidebar, text="Connect EDM", command=self.start_edm)
+        self.laser_detection_button.pack(pady=5)
+
+        #self.laser_detection_button = tk.Button(self.sidebar, text="ATR: OFF", command=self.toggle_laser_detection)
         #self.laser_detection_button.pack(pady=5)
+        
+        #self.printer = Printer("/dev/ttyUSB0", 250000)
         
 
         # Initial values of x and y
@@ -76,6 +82,13 @@ class MouseControlApp:
             self.device = system.select_device(self.devices)
             self.num_channels = self.setup(self.device)
             self.device.start_stream()
+
+    def start_edm(self):
+        self.edm = EDM("/dev/ttyUSB1", 19200)
+        if self.edm.connect():
+            print("Connected to the EDM.\n")
+        else:
+            print("No Connection to EDM\n")
 
     def create_devices_with_tries(self):
         tries = 0
@@ -184,8 +197,6 @@ class MouseControlApp:
         system.destroy_device()
         self.root.destroy()
 
-
-    
     def normalize(self, x):
         x = np.mod(x,400)
         if x < 0:
