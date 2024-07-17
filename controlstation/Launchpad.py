@@ -20,7 +20,7 @@ class MouseControlApp:
     def __init__(self, root):
         self.root = root
         self.root.title("OpenTachy - Control")
-
+        
         # Screen dimensions
         self.WIDTH, self.HEIGHT = 1024, 750
         
@@ -131,8 +131,8 @@ class MouseControlApp:
             self.ser.write(str.encode(orden))
 
             # Update sidebar labels
-            self.x_label.config(text=f"X: {round(self.x,3)}")
-            self.y_label.config(text=f"Y: {round(self.y,3)}")
+            self.x_label.config(text=f"X: {round(self.normalize(self.x),3)}")
+            self.y_label.config(text=f"Y: {round(self.normalize(self.y+100),3)}")
 
     def draw(self):
         self.canvas.delete("all")
@@ -170,6 +170,14 @@ class MouseControlApp:
         self.device.stop_stream()
         system.destroy_device()
         self.root.destroy()
+
+
+    
+    def normalize(self, x):
+        x = np.mod(x,400)
+        if x < 0:
+            x += 400
+        return x
 
 if __name__ == "__main__":
     root = tk.Tk()
