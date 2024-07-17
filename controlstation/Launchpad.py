@@ -48,6 +48,13 @@ class MouseControlApp:
         self.x_label = tk.Label(self.sidebar, text="X: 0", bg="gray", font=("Helvetica", 14))
         self.x_label.pack(pady=3)
 
+        self.laser_detection_button = tk.Button(self.sidebar, text="Start Camera", command=self.start_camera)
+        self.laser_detection_button.pack(pady=5)
+
+        #self.laser_detection_button = tk.Button(self.sidebar, text="Marker Detection: OFF", command=self.toggle_laser_detection)
+        #self.laser_detection_button.pack(pady=5)
+        
+
         # Initial values of x and y
         self.x, self.y = 0, 0
         self.center_x, self.center_y = 0, 0
@@ -59,13 +66,16 @@ class MouseControlApp:
         self.canvas.bind("<ButtonRelease-1>", self.on_mouse_up)
         self.canvas.bind("<Motion>", self.on_mouse_move)
 
-        self.devices = self.create_devices_with_tries()
-        self.device = system.select_device(self.devices)
-        self.num_channels = self.setup(self.device)
-        self.device.start_stream()
+        self.device = None
 
         # Start the drawing loop
         self.draw()
+    def start_camera(self):
+        if self.device is None:
+            self.devices = self.create_devices_with_tries()
+            self.device = system.select_device(self.devices)
+            self.num_channels = self.setup(self.device)
+            self.device.start_stream()
 
     def create_devices_with_tries(self):
         tries = 0
@@ -137,20 +147,21 @@ class MouseControlApp:
 
     def draw(self):
         self.canvas.delete("all")
-        buffer = self.device.get_buffer()
-        item = BufferFactory.copy(buffer)
-        self.device.requeue_buffer(buffer)
-        buffer_bytes_per_pixel = int(len(item.data) / (item.width * item.height))
-        array = (ctypes.c_ubyte * self.num_channels * item.width * item.height).from_address(ctypes.addressof(item.pbytes))
-        frame = np.ndarray(buffer=array, dtype=np.uint8, shape=(item.height, item.width))
-        # Capture frame-by-frame
-        img = cv2.resize(frame, (self.WIDTH, self.HEIGHT))
-        img = Image.fromarray(img)
-        imgtk = ImageTk.PhotoImage(image=img)
+        if self.device is not None:
+            buffer = self.device.get_buffer()
+            item = BufferFactory.copy(buffer)
+            self.device.requeue_buffer(buffer)
+            buffer_bytes_per_pixel = int(len(item.data) / (item.width * item.height))
+            array = (ctypes.c_ubyte * self.num_channels * item.width * item.height).from_address(ctypes.addressof(item.pbytes))
+            frame = np.ndarray(buffer=array, dtype=np.uint8, shape=(item.height, item.width))
+            # Capture frame-by-frame
+            img = cv2.resize(frame, (self.WIDTH, self.HEIGHT))
+            img = Image.fromarray(img)
+            imgtk = ImageTk.PhotoImage(image=img)
 
-        # Add the image to the canvas
-        self.canvas.create_image(0, 0, anchor=tk.NW, image=imgtk)
-        self.canvas.image = imgtk
+            # Add the image to the canvas
+            self.canvas.create_image(0, 0, anchor=tk.NW, image=imgtk)
+            self.canvas.image = imgtk
 
         # Draw a crosshair in the middle of the screen
         self.canvas.create_line(self.WIDTH // 2 - 20, self.HEIGHT // 2, self.WIDTH // 2 + 20, self.HEIGHT // 2, fill="red", width=2)
@@ -161,7 +172,8 @@ class MouseControlApp:
 
         # Update position if mouse is down
         self.update_position()
-        BufferFactory.destroy(item)
+        if self.device is not None:
+            BufferFactory.destroy(item)
         self.root.after(20, self.draw)
 
     def on_closing(self):
