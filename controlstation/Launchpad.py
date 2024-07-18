@@ -154,13 +154,20 @@ class MouseControlApp:
 
     def setup(self, device):
         nodemap = device.nodemap
-        nodes = nodemap.get_node(['PixelFormat'])
+
+        nodes = nodemap.get_node(['Width', 'Height', 'PixelFormat'])
+
+        #nodes['Width'].value = self.WIDTH
+        #nodes['Height'].value = self.HEIGHT
         nodes['PixelFormat'].value = 'Mono8'
+
         tl_stream_nodemap = device.tl_stream_nodemap
         nodemap.get_node('DecimationHorizontal').value = 2
         nodemap.get_node('DecimationVertical').value = 2
+        nodemap.get_node('BinningHorizontal').value = 2
+        nodemap.get_node('BinningVertical').value = 2
         nodemap.get_node('AcquisitionFrameRateEnable').value = True
-        nodemap.get_node('AcquisitionFrameRate').value = 15.0
+        nodemap.get_node('AcquisitionFrameRate').value = 20.0
         nodemap.get_node("AcquisitionMode").value = "Continuous"
         nodemap.get_node('ExposureAuto').value = "Once"
         nodemap.get_node('Gain').value = 10.0
@@ -243,8 +250,8 @@ class MouseControlApp:
 
     def calc_offset(self, distance):
         if distance is not None:
-            offset_y = np.interp(distance, self.data_dist, self.data_y)
-            offset_x = np.interp(distance, self.data_dist, self.data_x)
+            offset_y = (np.interp(distance, self.data_dist, self.data_y))/2
+            offset_x = (np.interp(distance, self.data_dist, self.data_x))/2
             return offset_x, offset_y
         return None
 
@@ -269,7 +276,7 @@ class MouseControlApp:
                     y_sum = self.corners[0][0][0][1] + self.corners[0][0][1][1] + self.corners[0][0][2][1] + self.corners[0][0][3][1]
                     self.marker_coords = (x_sum * 0.25, y_sum * 0.25)
 
-                    offset_x, offset_y = -18, 120
+                    offset_x, offset_y = -18, 60
                     center_x, center_y = width // 2 + offset_x, height // 2 + offset_y
                     
                     roi_x, roi_y = 100, 140
@@ -279,7 +286,7 @@ class MouseControlApp:
                     if x1 <= self.marker_coords[0] <= x2 and y1 <= self.marker_coords[1] <= y2:
                         distance = self.edm.capture_distance()
                         center_x_fine, center_y_fine = self.calc_offset(distance)
-                        #print(f"Center_y: {center_y_fine}")
+                        print(f"Center_y: {center_y_fine}")
                         dist_x, dist_y = center_x_fine - self.marker_coords[0], center_y_fine - self.marker_coords[1]
                         
                     else:
@@ -304,8 +311,8 @@ class MouseControlApp:
                     self.printer.send_command(move_command)
                 
             # Capture frame-by-frame
-            img = cv2.resize(frame_markers, (self.WIDTH, self.HEIGHT))
-            img = Image.fromarray(img)
+            
+            img = Image.fromarray(frame_markers)
             imgtk = ImageTk.PhotoImage(image=img)
 
             # Add the image to the canvas
