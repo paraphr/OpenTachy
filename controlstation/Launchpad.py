@@ -8,6 +8,7 @@ Created on Tue Jul 16 21:46:24 2024
 import tkinter as tk
 from PIL import Image, ImageTk
 import cv2
+from cv2 import aruco
 import sys
 from arena_api.system import system
 from arena_api.buffer import BufferFactory
@@ -25,8 +26,8 @@ class MouseControlApp:
         # Screen dimensions
         self.WIDTH, self.HEIGHT = 1024, 750
         
-        self.ser = serial.Serial("/dev/ttyUSB1", 250000)
-
+        self.printer = Printer("/dev/ttyPRI", 250000)
+        self.edm = EDM("/dev/ttyEDM", 19200)
         # Create main frame
         self.main_frame = tk.Frame(self.root)
         self.main_frame.pack(fill=tk.BOTH, expand=True)
@@ -55,17 +56,23 @@ class MouseControlApp:
         self.start_camera_button = tk.Button(self.sidebar, text="Start Camera", command=self.start_camera)
         self.start_camera_button.pack(pady=5)
 
+        self.start_printer_button = tk.Button(self.sidebar, text="Connect Printer", command=self.start_printer)
+        self.start_printer_button.pack(pady=5)
+
         self.start_edm_button = tk.Button(self.sidebar, text="Connect EDM", command=self.start_edm)
         self.start_edm_button.pack(pady=5)
 
         self.get_distance_button = tk.Button(self.sidebar, text="Get Distance", command=self.get_distance)
         self.get_distance_button.pack(pady=5)
 
-        self.change_position = tk.Button(self.sidebar, text="Position: I", command=self.switch_position)
+        self.change_position = tk.Button(self.sidebar, text="Position: 1", command=self.switch_position)
         self.change_position.pack(pady=5)
 
-        self.position = True
+        self.change_atr = tk.Button(self.sidebar, text="ATR: OFF", command=self.switch_atr)
+        self.change_atr.pack(pady=5)
 
+        self.position = True
+        self.atr_state = False 
         #self.laser_detection_button = tk.Button(self.sidebar, text="ATR: OFF", command=self.toggle_laser_detection)
         #self.laser_detection_button.pack(pady=5)
         
@@ -78,6 +85,13 @@ class MouseControlApp:
         self.mouse_x, self.mouse_y = self.WIDTH / 2, self.HEIGHT / 2
         self.mouse_down = False
 
+        self.dictionary = aruco.getPredefinedDictionary(cv2.aruco.DICT_4X4_100)
+        self.parameters = aruco.DetectorParameters()
+        self.detector = aruco.ArucoDetector(self.dictionary, self.parameters)
+        self.corners = None
+        self.marker_coords = None
+        
+        
         # Bind events
         self.canvas.bind("<ButtonPress-1>", self.on_mouse_down)
         self.canvas.bind("<ButtonRelease-1>", self.on_mouse_up)
@@ -95,8 +109,13 @@ class MouseControlApp:
             self.num_channels = self.setup(self.device)
             self.device.start_stream()
 
+    def start_printer(self):
+        if self.printer.connect():
+            print("Connected to the Printer.\n")
+        else:
+            print("No Connection to Printerf\n")
+
     def start_edm(self):
-        self.edm = EDM("/dev/ttyUSB0", 19200)
         if self.edm.connect():
             print("Connected to the EDM.\n")
         else:
@@ -163,7 +182,7 @@ class MouseControlApp:
             self.y = -self.y
             orden = f"G1 X{self.x} Y{self.y} F3600\r\n"
             print(orden)
-            self.ser.write(str.encode(orden))
+            self.printer.send_command(orden)
 
             # Update sidebar labels
             self.y_label.config(text=f"V: {round(self.normalize(self.y+100),3)}")
@@ -177,21 +196,27 @@ class MouseControlApp:
         self.position = not self.position
         state = 1 if self.position else 2
         self.change_position.config(text=f"Position: {state}")
-        print("Position state switched to {state}.\n")
+        print(f"Position state switched to {state}.\n")
         if self.position is False:
             self.x += 200
             self.y = 200 - self.y
             orden = f"G1 X{self.x} Y{self.y} F3600\r\n"
             print(orden)
-            self.ser.write(str.encode(orden))
+            self.printer.send_command(orden)
         elif self.position is True:
             self.x -= 200
             self.y = -self.y + 200
             orden = f"G1 X{self.x} Y{self.y} F3600\r\n"
             print(orden)
-            self.ser.write(str.encode(orden))
+            self.printer.send_command(orden)
         self.y_label.config(text=f"V: {round(self.normalize(self.y+100),3)}")
         self.x_label.config(text=f"Hz: {round(self.normalize(self.x),3)}")
+
+    def switch_atr(self):
+        self.atr_state = not self.atr_state
+        state = "ON" if self.atr_state else "OFF"
+        self.change_atr.config(text=f"ATR: {state}")
+        print(f"ATR turned {state}.\n")
 
     def draw(self):
         self.canvas.delete("all")
@@ -202,8 +227,10 @@ class MouseControlApp:
             buffer_bytes_per_pixel = int(len(item.data) / (item.width * item.height))
             array = (ctypes.c_ubyte * self.num_channels * item.width * item.height).from_address(ctypes.addressof(item.pbytes))
             frame = np.ndarray(buffer=array, dtype=np.uint8, shape=(item.height, item.width))
+            self.corners, ids, _ = self.detector.detectMarkers(frame)
+            frame_markers = aruco.drawDetectedMarkers(frame.copy(), self.corners, ids)
             # Capture frame-by-frame
-            img = cv2.resize(frame, (self.WIDTH, self.HEIGHT))
+            img = cv2.resize(frame_markers, (self.WIDTH, self.HEIGHT))
             img = Image.fromarray(img)
             imgtk = ImageTk.PhotoImage(image=img)
 
@@ -225,11 +252,15 @@ class MouseControlApp:
         self.root.after(20, self.draw)
 
     def on_closing(self):
-        orden = f"G1 X0 Y0 F3600\r\n"
-        print(orden)
-        self.ser.write(str.encode(orden))
-        self.device.stop_stream()
-        system.destroy_device()
+        try:
+            print("Destroy Devices")
+            orden = f"G1 X0 Y0 F3600\r\n"
+            print(orden)
+            self.printer.send_command(orden)
+            self.device.stop_stream()
+            system.destroy_device()
+        except:
+            print("No Device destroyed")
         self.root.destroy()
 
     def normalize(self, x):
