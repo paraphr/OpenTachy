@@ -97,7 +97,7 @@ class MouseControlApp:
         self.mouse_down = False
 
         # Init Aruco Markers
-        self.dictionary = aruco.getPredefinedDictionary(cv2.aruco.DICT_4X4_100)
+        self.dictionary = aruco.getPredefinedDictionary(cv2.aruco.DICT_4X4_50)
         self.parameters = aruco.DetectorParameters()
         self.detector = aruco.ArucoDetector(self.dictionary, self.parameters)
         self.corners = None
@@ -228,12 +228,15 @@ class MouseControlApp:
         if self.position is False:
             self.x += 200
             self.y = 200 - self.y
+            self.center_x, self.center_y = self.x, -self.y
             orden = f"G1 X{self.x} Y{self.y} F3600\r\n"
             print(orden)
             self.printer.send_command(orden)
         elif self.position is True:
             self.x -= 200
             self.y = -self.y + 200
+            self.center_x, self.center_y = self.x, -self.y
+
             orden = f"G1 X{self.x} Y{self.y} F3600\r\n"
             print(orden)
             self.printer.send_command(orden)

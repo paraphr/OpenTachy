@@ -20,10 +20,10 @@ class Printer:
         self.serial_connection = None
 
     def connect(self):
-        available_ports = [port.device for port in serial.tools.list_ports.comports()]
-        if self.port not in available_ports:
-            print(f"Error: The port {self.port} is not available. Available ports: {available_ports}")
-            return False
+        # available_ports = [port.device for port in serial.tools.list_ports.comports()]
+        # if self.port not in available_ports:
+        #     print(f"Error: The port {self.port} is not available. Available ports: {available_ports}")
+        #     return False
         try:
             print(f"Trying to connect to {self.port} at {self.baudrate} baud.")
             self.serial_connection = serial.Serial(self.port, self.baudrate, timeout=self.timeout)
@@ -60,7 +60,7 @@ class Printer:
         print("Setting up")
         self.send_command("G1 X0 Y0")   # Home
         self.send_command("M211 S0")   # Soft End Stop Off
-        self.send_command("G91")   # Positioning Relativ
+        self.send_command("G90")   # Positioning Relativ
         return None
 
     def send_command(self, command):
@@ -120,10 +120,10 @@ class EDM:
         self.serial_connection = None
 
     def connect(self):
-        available_ports = [port.device for port in serial.tools.list_ports.comports()]
-        if self.port not in available_ports:
-            print(f"Error: The port {self.port} is not available. Available ports: {available_ports}")
-            return False
+        # available_ports = [port.device for port in serial.tools.list_ports.comports()]
+        # if self.port not in available_ports:
+        #     print(f"Error: The port {self.port} is not available. Available ports: {available_ports}")
+        #     return False
         try:
             print(f"Trying to connect to {self.port} at {self.baudrate} baud.")
             self.serial_connection = serial.Serial(self.port, self.baudrate, timeout=self.timeout, parity=self.parity, bytesize=self.bytesize)
@@ -193,6 +193,12 @@ class EDM:
             else:
                 print("Failed to parse distance response.")
         return None
+    
+    def laser(self, state):
+        if state:
+            self.send_command("s0o")
+        else:
+            self.send_command("s0c")
 
     def _handle_response(self, response):
         if response.startswith('Error'):
