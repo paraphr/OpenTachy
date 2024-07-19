@@ -20,6 +20,8 @@ from Devices import Printer, EDM
 
 class MouseControlApp:
     def __init__(self, root):
+
+        # Correction Table
         self.data_y = [1024,988.25,962.25,941.75,926.75,915.75,908,899.75,894,888.5,888.5,884,880.5,877.75,873.75,871,869.25,
              866.5,865,863,861.25,859.75,859,857.5,855.5,855.25,853.25,852.5,851.25,850.75,849,848.5,848,847.5,830.5]
         
@@ -83,27 +85,23 @@ class MouseControlApp:
         self.change_atr = tk.Button(self.sidebar, text="ATR: OFF", command=self.switch_atr)
         self.change_atr.pack(pady=5)
 
+        # Device states
         self.position = True
         self.laser_state = False
         self.atr_state = False 
-        #self.laser_detection_button = tk.Button(self.sidebar, text="ATR: OFF", command=self.toggle_laser_detection)
-        #self.laser_detection_button.pack(pady=5)
-        
-        #self.printer = Printer("/dev/ttyUSB0", 250000)
-        
-
+    
         # Initial values of x and y
         self.x, self.y = 0, 0
         self.center_x, self.center_y = 0, 0
         self.mouse_x, self.mouse_y = self.WIDTH / 2, self.HEIGHT / 2
         self.mouse_down = False
 
+        # Init Aruco Markers
         self.dictionary = aruco.getPredefinedDictionary(cv2.aruco.DICT_4X4_100)
         self.parameters = aruco.DetectorParameters()
         self.detector = aruco.ArucoDetector(self.dictionary, self.parameters)
         self.corners = None
         self.marker_coords = None
-        
         
         # Bind events
         self.canvas.bind("<ButtonPress-1>", self.on_mouse_down)
